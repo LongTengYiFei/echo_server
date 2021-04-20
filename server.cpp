@@ -17,6 +17,7 @@
 #define TCP_BUFFER_SIZE 512
 #define UDP_BUFFER_SIZE 1024
 
+//面试考过的，如何设置非阻塞socket
 int setnonblocking( int fd )
 {
     int old_option = fcntl( fd, F_GETFL );
