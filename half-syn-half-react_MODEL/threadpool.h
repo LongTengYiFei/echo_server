@@ -109,6 +109,7 @@ void threadpool< T >::run()
         {
             continue;
         }
+	//放入线程池的对象必须实现process函数！
         request->process();
     }
 }

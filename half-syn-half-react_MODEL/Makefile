@@ -1,3 +1,3 @@
 all:
-	g++ server.cpp -o server.out
+	g++ main.cpp echo.cpp -o server.out -pthread
 
