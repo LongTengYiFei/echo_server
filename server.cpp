@@ -81,24 +81,30 @@ int main( int argc, char* argv[] )
     addfd( epollfd, udpfd );
 
     while( 1 )
-    {
+    {	
+	//epoll的timeout和poll的timeout解释是一样的
+	//成功时返回就绪的文件描述符的个数
+	//将就绪事件从内核事件表拷贝到第二个参数指定的数组中
         int number = epoll_wait( epollfd, events, MAX_EVENT_NUMBER, -1 );
         if ( number < 0 )
         {
             printf( "epoll failure\n" );
             break;
         }
-    
+   
+       //	
         for ( int i = 0; i < number; i++ )
         {
             int sockfd = events[i].data.fd;
-            if ( sockfd == listenfd )
+       	    //tcp监听套接字
+	    if ( sockfd == listenfd )
             {
                 struct sockaddr_in client_address;
                 socklen_t client_addrlength = sizeof( client_address );
                 int connfd = accept( listenfd, ( struct sockaddr* )&client_address, &client_addrlength );
                 addfd( epollfd, connfd );
             }
+	    //udp
             else if ( sockfd == udpfd )
             {
                 char buf[ UDP_BUFFER_SIZE ];
@@ -109,9 +115,12 @@ int main( int argc, char* argv[] )
                 ret = recvfrom( udpfd, buf, UDP_BUFFER_SIZE-1, 0, ( struct sockaddr* )&client_address, &client_addrlength );
                 if( ret > 0 )
                 {
+		    //回射
                     sendto( udpfd, buf, UDP_BUFFER_SIZE-1, 0, ( struct sockaddr* )&client_address, client_addrlength );
                 }
             }
+	    //这里肯定是连接套接字
+	    //连接套接字发生了可读事件
             else if ( events[i].events & EPOLLIN )
             {
                 char buf[ TCP_BUFFER_SIZE ];
@@ -119,19 +128,28 @@ int main( int argc, char* argv[] )
                 {
                     memset( buf, '\0', TCP_BUFFER_SIZE );
                     ret = recv( sockfd, buf, TCP_BUFFER_SIZE-1, 0 );
+		    //一直读，读到socket空为止
                     if( ret < 0 )
                     {
+			//非阻塞返回-1，再试一次！
+			//说白了就是客户端没有进一步发送数据
                         if( ( errno == EAGAIN ) || ( errno == EWOULDBLOCK ) )
                         {
                             break;
                         }
+			//如果返回值是-1且errno不属于上述情况，那么肯定出错了
+			//直接关闭socket
                         close( sockfd );
                         break;
                     }
+		    //The value 0 may also be returned if the requested number of bytes
+       		    //to receive from a stream socket was 0.
+		    //man page这样说的，没看懂啥意思
                     else if( ret == 0 )
                     {
                         close( sockfd );
                     }
+		    //回射
                     else
                     {
                         send( sockfd, buf, ret, 0 );
