@@ -30,7 +30,6 @@ void addfd( int epollfd, int fd )
 {
     epoll_event event;
     event.data.fd = fd;
-    //event.events = EPOLLIN | EPOLLET;
     event.events = EPOLLIN;
     epoll_ctl( epollfd, EPOLL_CTL_ADD, fd, &event );
     setnonblocking( fd );
@@ -38,6 +37,7 @@ void addfd( int epollfd, int fd )
 
 int main( int argc, char* argv[] )
 {
+    //这里为什么还要手动指定ip地址呢？我想可能是因为一台服务器可能有多个网卡
     if( argc <= 2 )
     {
         printf( "usage: %s ip_address port_number\n", basename( argv[0] ) );
@@ -53,25 +53,27 @@ int main( int argc, char* argv[] )
     inet_pton( AF_INET, ip, &address.sin_addr );
     address.sin_port = htons( port );
 
+    //tcp 流
     int listenfd = socket( PF_INET, SOCK_STREAM, 0 );
     assert( listenfd >= 0 );
-
     ret = bind( listenfd, ( struct sockaddr* )&address, sizeof( address ) );
     assert( ret != -1 );
-
     ret = listen( listenfd, 5 );
     assert( ret != -1 );
-
+    
+    //重置address，udp要用
     bzero( &address, sizeof( address ) );
     address.sin_family = AF_INET;
     inet_pton( AF_INET, ip, &address.sin_addr );
     address.sin_port = htons( port );
+    
+    //udp 数据报
     int udpfd = socket( PF_INET, SOCK_DGRAM, 0 );
     assert( udpfd >= 0 );
-
     ret = bind( udpfd, ( struct sockaddr* )&address, sizeof( address ) );
     assert( ret != -1 );
-
+	
+    //epoll
     epoll_event events[ MAX_EVENT_NUMBER ];
     int epollfd = epoll_create( 5 );
     assert( epollfd != -1 );
