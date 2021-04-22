@@ -25,8 +25,8 @@ private:
     pthread_t* m_threads;
     std::list< T* > m_workqueue;
     locker m_queuelocker;
-    sem m_queuestat;
-    bool m_stop;
+    sem m_queuestat;//正在工作的个数
+    bool m_stop; // 有什么用呢？
 };
 
 template< typename T >
@@ -72,6 +72,7 @@ threadpool< T >::~threadpool()
 template< typename T >
 bool threadpool< T >::append( T* request )
 {
+    //工作队列被所有线程共享，所以要加锁
     m_queuelocker.lock();
     if ( m_workqueue.size() > m_max_requests )
     {
@@ -80,7 +81,7 @@ bool threadpool< T >::append( T* request )
     }
     m_workqueue.push_back( request );
     m_queuelocker.unlock();
-    m_queuestat.post();
+    m_queuestat.post();//正在工作个数，信号量原子加一
     return true;
 }
 
@@ -97,8 +98,11 @@ void threadpool< T >::run()
 {
     while ( ! m_stop )
     {
+	//信号量，等待一个工作
         m_queuestat.wait();
+	//如果等到了，那么工作队列加锁，把工作取走
         m_queuelocker.lock();
+	//还没来得及加锁，工作队列又空了
         if ( m_workqueue.empty() )
         {
             m_queuelocker.unlock();
