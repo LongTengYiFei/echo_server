@@ -33,17 +33,19 @@ template< typename T >
 threadpool< T >::threadpool( int thread_number, int max_requests ) : 
         m_thread_number( thread_number ), m_max_requests( max_requests ), m_stop( false ), m_threads( NULL )
 {
+    //参数不合法
     if( ( thread_number <= 0 ) || ( max_requests <= 0 ) )
     {
         throw std::exception();
     }
-
+    
+    //线程数组创建错误
     m_threads = new pthread_t[ m_thread_number ];
     if( ! m_threads )
     {
         throw std::exception();
     }
-
+    //每创建一个线程都将其脱离
     for ( int i = 0; i < thread_number; ++i )
     {
         printf( "create the %dth thread\n", i );
